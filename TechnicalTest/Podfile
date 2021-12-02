@@ -1,0 +1,59 @@
+# Uncomment the next line to define a global platform for your project
+platform :ios, '11.0'
+inhibit_all_warnings!
+
+def rx_swift
+    pod 'RxSwift'
+end
+
+def rx_cocoa
+    pod 'RxCocoa'
+end
+
+target 'Domain' do
+  # Comment the next line if you don't want to use dynamic frameworks
+  use_frameworks!
+  
+  rx_swift
+
+  # Pods for Domain
+
+  target 'DomainTests' do
+    # Pods for testing
+  end
+
+end
+
+target 'NetworkPlatform' do
+  # Comment the next line if you don't want to use dynamic frameworks
+  use_frameworks!
+  
+  rx_swift
+  pod 'Alamofire'
+  pod 'RxAlamofire'
+
+  # Pods for NetworkPlatform
+
+  target 'NetworkPlatformTests' do
+    # Pods for testing
+  end
+
+end
+
+target 'TechnicalTest' do
+  # Comment the next line if you don't want to use dynamic frameworks
+  use_frameworks!
+
+  rx_cocoa
+  rx_swift
+  pod 'SnapKit', '~> 5.0.0'
+  pod 'RxDataSources'
+  pod 'RxReachability', '~> 1.2.1'
+  pod 'SkeletonView'
+  pod 'Kingfisher', '~> 5.15'
+  pod 'RxKingfisher'
+  pod 'R.swift'
+  
+  # Pods for TechnicalTest
+
+end

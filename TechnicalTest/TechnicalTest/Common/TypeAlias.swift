@@ -1,0 +1,4 @@
+import RxDataSources
+
+typealias RxTableDataSource = RxTableViewSectionedReloadDataSource
+typealias RxCollectionDataSource = RxCollectionViewSectionedReloadDataSource

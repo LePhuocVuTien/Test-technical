@@ -1,0 +1,18 @@
+import UIKit
+
+public class RxCollectionView: UICollectionView {
+  
+  public override func layoutIfNeeded() {
+    if window == nil {
+      return
+    }
+    super.layoutIfNeeded()
+  }
+  
+  public override func layoutSubviews() {
+    if window == nil {
+      return
+    }
+    super.layoutSubviews()
+  }
+}
