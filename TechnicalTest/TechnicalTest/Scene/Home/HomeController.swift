@@ -5,7 +5,7 @@ import RxSwift
 import Domain
 import RxDataSources
 
-class HomeController: UIViewController {
+class HomeController: UIViewController, UIScrollViewDelegate {
   
   typealias Element = HomeViewModel.Element
   
@@ -35,26 +35,14 @@ class HomeController: UIViewController {
       .mapToVoid()
       .asDriverOnErrorJustComplete()
     
-    let itemSelectedTrigger = content.tableView.rx
-      .modelSelected(Element.self)
-      .do(onNext: { item in
-        print("Selected")
-      })
-      .asDriverOnErrorJustComplete()
-    
     let input = HomeViewModel.Input(
-      viewDidLoad: viewDidLoadTrigger,
-      itemSelected: itemSelectedTrigger
+      viewDidLoad: viewDidLoadTrigger
     )
     
     let output = viewModel.transform(input: input)
     
     output.calendar
       .drive(content.tableView.rx.items(dataSource: dataSource))
-      .disposed(by: disposeBag)
-    
-    output.itemSelected
-      .drive()
       .disposed(by: disposeBag)
     
     output.fetching

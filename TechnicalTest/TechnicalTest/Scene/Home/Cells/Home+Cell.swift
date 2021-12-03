@@ -1,13 +1,21 @@
 import UIKit
 import Domain
+import RxDataSources
+import RxCocoa
+import RxSwift
 
 extension HomeController {
   
   class Cell: UITableViewCell {
     
-    private var offset: CGFloat = 0
+    let disposeBag = DisposeBag()
+    var item: HomeController.Element?
+    var elements: [HomeViewModel.AssignmentElement] = []
+    let assignmentTrigger = PublishRelay<[SectionModel<String, HomeViewModel.AssignmentElement>]>()
     
-    var subViews: [UIView] = []
+    private lazy var dataSource: RxTableDataSource<SectionModel<String, HomeViewModel.AssignmentElement>> = {
+      return createDataSource()
+    }()
     
     private lazy var content: UIView = {
       let view = UIView()
@@ -35,10 +43,20 @@ extension HomeController {
       return view
     }()
     
+    lazy var tableView: UITableView = {
+      let tableView = UITableView(frame: .zero)
+      tableView.separatorStyle = .none
+      tableView.showsVerticalScrollIndicator = false
+      tableView.register(DetailCell.self)
+      tableView.isScrollEnabled = false
+      return tableView
+    }()
+    
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
       super.init(style: style, reuseIdentifier: reuseIdentifier)
       selectionStyle = .none
       setupViews()
+      binding()
       setConstraints()
     }
     
@@ -46,8 +64,25 @@ extension HomeController {
       fatalError("init(coder:) has not been implemented")
     }
     
+    private func binding() {
+      tableView.rx.itemSelected
+        .subscribe(onNext: { [weak self] indexPath in
+          guard let self = self,
+                self.elements.count > indexPath.row else {
+            return
+          }
+          let status = self.elements[indexPath.row].item.status
+          if status != 1 {
+            self.elements[indexPath.row].item.status = status == 2 ? 0 : 2
+            self.elements[indexPath.row].isActive = !self.elements[indexPath.row].isActive
+          }
+          self.assignmentTrigger.accept([SectionModel(model: "", items: self.elements)])
+        }).disposed(by: disposeBag)
+    }
+    
     private func setupViews() {
       addSubview(content)
+      content.addSubview(tableView)
       addSubview(nameOfDay)
       addSubview(day)
       addSubview(line)
@@ -59,7 +94,11 @@ extension HomeController {
         $0.bottom.equalToSuperview().inset(19.0)
         $0.left.equalToSuperview().inset(71.0)
         $0.right.equalToSuperview().inset(21.0)
-        $0.height.greaterThanOrEqualTo(72.0)
+        $0.height.equalTo(72.0)
+      }
+      
+      tableView.snp.makeConstraints {
+        $0.edges.equalToSuperview()
       }
       
       nameOfDay.snp.makeConstraints {
@@ -83,70 +122,55 @@ extension HomeController {
     }
     
     func configure(_ element: Element) {
+      item = element
+      tableView.dataSource = nil
       nameOfDay.rx.text.onNext(element.day.name.uppercased())
       day.rx.text.onNext(element.day.day)
       content.isHidden = (element.item?.assignments.count ?? 0) == 0
+      setDayColor(element.day.rawValue)
       
       guard let assignments = element.item?.assignments,
             assignments.count > 0 else {
         return
       }
-      adjustCell(assignments: assignments)
-    }
-    
-    func adjustCell(assignments: [Assignment]) {
-      subViews = []
-      offset = 0.0
-      content.subviews.forEach({ $0.removeFromSuperview() })
-      assignments.forEach { assignment in
-        self.addChildView(assignment)
+      
+      self.content.snp.updateConstraints {
+        $0.height.equalTo(assignments.count * 91 - 19)
       }
       
-      subViews.forEach { [weak self] view in
-        guard let self = self else {return}
-        self.content.addSubview(view)
-        view.snp.makeConstraints {
-          $0.top.equalToSuperview().offset(self.offset)
-          $0.left.right.equalToSuperview()
-          $0.height.equalTo(72.0)
+      let items = assignments
+        .map { assignment -> HomeViewModel.AssignmentElement in
+          let status = StateExercisesItem(rawValue: assignment.status)
+          return HomeViewModel.AssignmentElement(isActive: status == .completed , item: assignment)
         }
-        offset += 80.0
-      }
       
-      content.snp.updateConstraints {
-        $0.height.greaterThanOrEqualTo(offset - 8)
-      }
+      self.elements = items
+      assignmentTrigger
+        .bind(to: self.tableView.rx.items(dataSource: self.dataSource))
+        .disposed(by: self.disposeBag)
+      assignmentTrigger.accept([SectionModel(model: "", items: items)])
     }
     
-    func addChildView(_ item: Assignment) {
-      let view = SubView()
-      let statusExercises = StateExercisesItem(rawValue: item.status)
-      let textColorTitle = statusExercises == .completed ? R.color.white() : R.color.textPri()
-      let textColorStatus = statusExercises == .completed ? R.color.white() : R.color.textSec()
-      
-      view.title.rx.text.onNext(item.title)
-      view.status.rx.textColor.onNext(textColorStatus)
-      view.title.rx.textColor.onNext(textColorTitle)
-      view.isCheck.rx.isHidden.onNext(!(statusExercises == .completed))
-      
-      switch statusExercises {
-        case .missing:
-          let text = "\(Works.missing) • \(item.totalExercise) \(Works.exercises.lowercased())"
-          view.status.mixColorText(fullText: text, changeText: Works.missing, color: R.color.textThi()!)
-          view.content.backgroundColor = R.color.bgNormal()
-          
-        case .normal:
-          view.status.rx.text.onNext("\(item.totalExercise) \(Works.exercises.lowercased())")
-          view.content.backgroundColor = R.color.bgNormal()
-          
-        case .completed:
-          view.status.rx.text.onNext(Works.completed)
-          view.content.backgroundColor = R.color.bgActive()
-          
-        case .none:
-          break
+    func createDataSource() -> RxTableDataSource<SectionModel<String, HomeViewModel.AssignmentElement>> {
+      return RxTableDataSource<SectionModel<String, HomeViewModel.AssignmentElement>>(
+        configureCell: { (dataSource, tableView, indexPath, item) -> UITableViewCell in
+          let cell = tableView.dequeueReusableCell(
+            cellClass: DetailCell.self,
+            indexPath: indexPath
+          )
+          cell.configure(item)
+          return cell
+        }
+      )
+    }
+    
+    func setDayColor(_ toDay: Int) {
+      let date = Date()
+      let calenderDate = Calendar.current.dateComponents([.day, .year, .month], from: date)
+      if toDay == calenderDate.day {
+        nameOfDay.rx.textColor.onNext(R.color.textFor())
+        day.rx.textColor.onNext(R.color.textFor())
       }
-      subViews.append(view)
     }
   }
 }

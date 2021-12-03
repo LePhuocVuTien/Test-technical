@@ -14,12 +14,10 @@ final class HomeViewModel: ViewModelType {
   
   struct Input {
     let viewDidLoad: Driver<Void>
-    let itemSelected: Driver<Element>
   }
   
   struct Output {
     let calendar: Driver<[SectionModel<String, Element>]>
-    let itemSelected: Driver<Element>
     let fetching: Driver<Bool>
     let error: Driver<Error>
   }
@@ -53,7 +51,6 @@ final class HomeViewModel: ViewModelType {
     
     return Output(
       calendar: calendar,
-      itemSelected: input.itemSelected,
       fetching: fetching,
       error: error
     )
@@ -94,5 +91,11 @@ extension HomeViewModel {
     var isActive: Bool
     var day: DayItem
     var item: Domain.Item?
+    
+  }
+  
+  struct AssignmentElement {
+    var isActive: Bool
+    var item: Domain.Assignment
   }
 }
